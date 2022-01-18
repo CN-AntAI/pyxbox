@@ -13,9 +13,11 @@ import html
 import json
 import logging
 import os
+import random
 import re
 import shutil
 import socket
+import string
 import time
 import traceback
 import urllib
@@ -883,6 +885,70 @@ x_cookie = Cookie()
 
 # ************************************************ Cookie相关模块 --end ************************************************
 
+# *********************************************** 生成假数据相关模块 --start ***********************************************
+class Faker:
+    def get_random_password(self, length=8, special_characters=""):
+        """
+        @summary: 创建随机密码 默认长度为8，包含大写字母、小写字母、数字
+        ---------
+        @param length: 密码长度 默认8
+        @param special_characters: 特殊字符
+        ---------
+        @result: 指定长度的密码
+        """
+
+        while True:
+            random_password = "".join(
+                random.sample(
+                    string.ascii_letters + string.digits + special_characters, length
+                )
+            )
+            if (
+                    re.search("[0-9]", random_password)
+                    and re.search("[A-Z]", random_password)
+                    and re.search("[a-z]", random_password)
+            ):
+                if not special_characters:
+                    break
+                elif set(random_password).intersection(special_characters):
+                    break
+
+        return random_password
+
+    def get_random_email(self, length=None, email_types: list = None, special_characters=""):
+        """
+        随机生成邮箱
+        :param length: 邮箱长度
+        :param email_types: 邮箱类型
+        :param special_characters: 特殊字符
+        :return:
+        """
+        if not length:
+            length = random.randint(4, 12)
+        if not email_types:
+            email_types = [
+                "qq.com",
+                "163.com",
+                "gmail.com",
+                "yahoo.com",
+                "hotmail.com",
+                "yeah.net",
+                "126.com",
+                "139.com",
+                "sohu.com",
+            ]
+
+        email_body = self.get_random_password(length, special_characters)
+        email_type = random.choice(email_types)
+
+        email = email_body + "@" + email_type
+        return email
+
+
+x_faker = Faker()
+
+
+# ************************************************ 生成假数据相关模块 --end ************************************************
 # *********************************************** URL相关模块 --start ***********************************************
 class URL:
     def get_urls(
@@ -1154,24 +1220,59 @@ class Text:
                 """
         return html.unescape(str)
 
+    def header_to_json(self, text):
+        """
+        @summary: 可快速将浏览器上的header转为json格式
+        ---------
+        @param text:
+        ---------
+        @result:
+        """
+
+        contents = text.split("\n")
+        json = {}
+        for content in contents:
+            if content == "\n":
+                continue
+
+            content = content.strip()
+            regex = ["(:?.*?):(.*)", "(.*?):? +(.*)", "([^:]*)"]
+
+            result = self.get_info(content, regex)
+            result = result[0] if isinstance(result[0], tuple) else result
+            try:
+                json[result[0]] = eval(result[1].strip())
+            except:
+                json[result[0]] = result[1].strip()
+
+        return json
+
+    def cut_string(self, text, length):
+        """
+        @summary: 将文本按指定长度拆分
+        ---------
+        @param text: 文本
+        @param length: 拆分长度
+        ---------
+        @result: 返回按指定长度拆分后形成的list
+        """
+
+        text_list = re.findall(".{%d}" % length, text, re.S)
+        leave_text = text[len(text_list) * length:]
+        if leave_text:
+            text_list.append(leave_text)
+
+        return text_list
+
+    def get_random_string(self, length=1):
+        random_string = "".join(random.sample(string.ascii_letters + string.digits, length))
+        return random_string
+
     def excape(self, str):
         """
                 转译
                 """
         return html.escape(str)
-
-    def replace_str(self, source_str, regex, replace_str=""):
-        """
-        @summary: 替换字符串
-        ---------
-        @param source_str: 原字符串
-        @param regex: 正则
-        @param replace_str: 用什么来替换 默认为''
-        ---------
-        @result: 返回替换后的字符串
-        """
-        str_info = re.compile(regex)
-        return str_info.sub(replace_str, source_str)
 
     def del_redundant_blank_character(self, text):
         """
