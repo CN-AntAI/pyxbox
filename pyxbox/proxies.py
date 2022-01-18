@@ -131,7 +131,7 @@ class AbuyunProxy(object):
 
 
 class DuobeiProxy(object):
-    def __init__(self, proxyUser, proxyPass, proxyHost="http-proxy-sg1.dobel.cn", proxyPort="9180", ):
+    def __init__(self, proxyUser, proxyPass, proxyHost="http-proxy-sg1.dobel.cn", proxyPort="9180"):
         self.proxyHost = proxyHost
         self.proxyPort = proxyPort
         self.proxyUser = proxyUser
