@@ -18,6 +18,7 @@ import re
 import shutil
 import socket
 import string
+import threading
 import time
 import traceback
 import urllib
@@ -68,6 +69,17 @@ def run_safe_model(module_name):
             return func
 
     return inner_run_safe_model
+
+
+class SingletonType(type):
+    _instance_lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        if not hasattr(cls, "_instance"):
+            with SingletonType._instance_lock:
+                if not hasattr(cls, "_instance"):
+                    cls._instance = super(SingletonType, cls).__call__(*args, **kwargs)
+        return cls._instance
 
 
 # ************************************************ 普通工具 --end ************************************************
