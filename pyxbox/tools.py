@@ -24,11 +24,19 @@ import traceback
 import urllib
 import uuid
 from pprint import pformat
+from typing import List
 from urllib.parse import urljoin, urlencode
 
+import demjson
 import requests
 from requests.cookies import RequestsCookieJar
 from w3lib.url import canonicalize_url as _canonicalize_url
+
+from .bilibili_utils.BytesReader import BytesReader
+from .bilibili_utils.Color import Color
+from .bilibili_utils.Danmaku import Danmaku
+from .bilibili_utils.DanmakuClosedException import DanmakuClosedException
+from .bilibili_utils.ResponseException import ResponseException
 
 
 # *********************************************** 普通工具 --start ***********************************************
@@ -1821,4 +1829,256 @@ class SQL:
 
 x_sql = SQL()
 
+
 # ************************************************ SQL数据库相关 --end ************************************************
+
+# ************************************************ b站转码相关模块 --start ************************************************
+class Bilibili:
+    def __init__(self):
+        self.table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
+        self.tr = {}
+        for i in range(58):
+            self.tr[self.table[i]] = i
+        self.s = [11, 10, 3, 8, 4, 6]
+        self.xor = 177451812
+        self.add = 8728348608
+
+    def bv_to_av(self, bvd: str) -> int:
+        '''
+        bv转av
+        :param bvd: eg:BV1UY411p7jc
+        :return: av
+        '''
+        r = 0
+        for i in range(6):
+            r += self.tr[bvd[self.s[i]]] * 58 ** i
+        return (r - self.add) ^ self.xor
+
+    def av_to_bv(self, avd: int) -> str:
+        '''
+        av转bv
+        :param avd: eg:252242806
+        :return:
+        '''
+        x = (avd ^ self.xor) + self.add
+        r = list('BV1  4 1 7  ')
+        for i in range(6):
+            r[self.s[i]] = self.table[x // 58 ** i % 58]
+        return ''.join(r)
+
+    def decode_view(self, stream: bytes):
+        '''
+        获取弹幕的视图函数
+        :param stream: 请求的二进制流
+        :return:
+        '''
+        json_data = {}
+        # 解析二进制数据流
+        reader = BytesReader(stream)
+
+        def read_dm_seg(stream: bytes):
+            reader_ = BytesReader(stream)
+            data = {}
+            while not reader_.has_end():
+                t = reader_.byte() >> 3
+                if t == 1:
+                    data['page_size'] = reader_.varint()
+                elif t == 2:
+                    data['total'] = reader_.varint()
+                else:
+                    continue
+            return data
+
+        def read_flag(stream: bytes):
+            reader_ = BytesReader(stream)
+            data = {}
+            while not reader_.has_end():
+                t = reader_.byte() >> 3
+                if t == 1:
+                    data['rec_flag'] = reader_.varint()
+                elif t == 2:
+                    data['rec_text'] = reader_.string()
+                elif t == 3:
+                    data['rec_switch'] = reader_.varint()
+                else:
+                    continue
+            return data
+
+        def read_command_danmakus(stream: bytes):
+            reader_ = BytesReader(stream)
+            data = {}
+            while not reader_.has_end():
+                t = reader_.byte() >> 3
+                if t == 1:
+                    data['id'] = reader_.varint()
+                elif t == 2:
+                    data['oid'] = reader_.varint()
+                elif t == 3:
+                    data['mid'] = reader_.varint()
+                elif t == 4:
+                    data['commend'] = reader_.string()
+                elif t == 5:
+                    data['content'] = reader_.string()
+                elif t == 6:
+                    data['progress'] = reader_.varint()
+                elif t == 7:
+                    data['ctime'] = reader_.string()
+                elif t == 8:
+                    data['mtime'] = reader_.string()
+                elif t == 9:
+                    temp_str = reader_.string()
+                    try:
+                        data['extra'] = demjson.decode(temp_str)
+                    except:
+                        data['extra'] = temp_str
+                        pass
+                elif t == 10:
+                    data['id_str'] = reader_.string()
+                else:
+                    continue
+            return data
+
+        def read_settings(stream: bytes):
+            reader_ = BytesReader(stream)
+            data = {}
+            while not reader_.has_end():
+                t = reader_.byte() >> 3
+
+                if t == 1:
+                    data['dm_switch'] = reader_.bool()
+                elif t == 2:
+                    data['ai_switch'] = reader_.bool()
+                elif t == 3:
+                    data['ai_level'] = reader_.varint()
+                elif t == 4:
+                    data['enable_top'] = reader_.bool()
+                elif t == 5:
+                    data['enable_scroll'] = reader_.bool()
+                elif t == 6:
+                    data['enable_bottom'] = reader_.bool()
+                elif t == 7:
+                    data['enable_color'] = reader_.bool()
+                elif t == 8:
+                    data['enable_special'] = reader_.bool()
+                elif t == 9:
+                    data['prevent_shade'] = reader_.bool()
+                elif t == 10:
+                    data['dmask'] = reader_.bool()
+                elif t == 11:
+                    data['opacity'] = reader_.float(True)
+                elif t == 12:
+                    data['dm_area'] = reader_.varint()
+                elif t == 13:
+                    data['speed_plus'] = reader_.float(True)
+                elif t == 14:
+                    data['font_size'] = reader_.float(True)
+                elif t == 15:
+                    data['screen_sync'] = reader_.bool()
+                elif t == 16:
+                    data['speed_sync'] = reader_.bool()
+                elif t == 17:
+                    data['font_family'] = reader_.string()
+                elif t == 18:
+                    data['bold'] = reader_.bool()
+                elif t == 19:
+                    data['font_border'] = reader_.varint()
+                elif t == 20:
+                    data['draw_type'] = reader_.string()
+                else:
+                    continue
+            return data
+
+        while not reader.has_end():
+            type_ = reader.byte() >> 3
+
+            if type_ == 1:
+                json_data['state'] = reader.varint()
+            elif type_ == 2:
+                json_data['text'] = reader.string()
+            elif type_ == 3:
+                json_data['text_side'] = reader.string()
+            elif type_ == 4:
+                json_data['dm_seg'] = read_dm_seg(reader.bytes_string())
+            elif type_ == 5:
+                json_data['flag'] = read_flag(reader.bytes_string())
+            elif type_ == 6:
+                if 'special_dms' not in json_data:
+                    json_data['special_dms'] = []
+                json_data['special_dms'].append(reader.string())
+            elif type_ == 7:
+                json_data['check_box'] = reader.bool()
+            elif type_ == 8:
+                json_data['count'] = reader.varint()
+            elif type_ == 9:
+                if 'command_dms' not in json_data:
+                    json_data['command_dms'] = []
+                json_data['command_dms'].append(
+                    read_command_danmakus(reader.bytes_string()))
+            elif type_ == 10:
+                json_data['dm_setting'] = read_settings(reader.bytes_string())
+            else:
+                continue
+        return json_data
+
+    def decode_danmakus(self, stream: bytes):
+        '''
+        解析弹幕数据
+        :param stream:请求的二进制流
+        :return:
+        '''
+        # 循环获取所有 segment
+        danmakus: List[Danmaku] = []
+        if stream == b'\x10\x01':
+            # 视频弹幕被关闭
+            raise DanmakuClosedException()
+
+        reader = BytesReader(stream)
+        while not reader.has_end():
+            type_ = reader.byte() >> 3
+            if type_ != 1:
+                raise ResponseException("解析响应数据错误")
+
+            dm = Danmaku('')
+            dm_pack_data = reader.bytes_string()
+            dm_reader = BytesReader(dm_pack_data)
+
+            while not dm_reader.has_end():
+                data_type = dm_reader.byte() >> 3
+
+                if data_type == 1:
+                    dm.id = dm_reader.varint()
+                elif data_type == 2:
+                    dm.dm_time = datetime.timedelta(
+                        seconds=dm_reader.varint() / 1000)
+                elif data_type == 3:
+                    dm.mode = dm_reader.varint()
+                elif data_type == 4:
+                    dm.font_size = dm_reader.varint()
+                elif data_type == 5:
+                    dm.color = Color()
+                    dm.color.set_dec_color(dm_reader.varint())
+                elif data_type == 6:
+                    dm.crc32_id = dm_reader.string()
+                elif data_type == 7:
+                    dm.text = dm_reader.string()
+                elif data_type == 8:
+                    dm.send_time = datetime.datetime.fromtimestamp(
+                        dm_reader.varint())
+                elif data_type == 9:
+                    dm.weight = dm_reader.varint()
+                elif data_type == 10:
+                    dm.action = dm_reader.varint()
+                elif data_type == 11:
+                    dm.pool = dm_reader.varint()
+                elif data_type == 12:
+                    dm.id_str = dm_reader.string()
+                elif data_type == 13:
+                    dm.attr = dm_reader.varint()
+                else:
+                    break
+            danmakus.append(dm)
+        return danmakus
+
+
+x_bilibili = Bilibili()
+# ************************************************ b站转码相关模块 --end ************************************************
