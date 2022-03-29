@@ -2036,8 +2036,8 @@ class Bilibili:
         while not reader.has_end():
             type_ = reader.byte() >> 3
             if type_ != 1:
-                raise ResponseException("解析响应数据错误")
-
+                # raise ResponseException("解析响应数据错误")
+                continue
             dm = Danmaku('')
             dm_pack_data = reader.bytes_string()
             dm_reader = BytesReader(dm_pack_data)
