@@ -1288,6 +1288,15 @@ class Text:
         random_string = "".join(random.sample(string.ascii_letters + string.digits, length))
         return random_string
 
+    def str_split_to_list(self, text: str = ''):
+        '''
+        把字符串转成列表，以\n切片分割且去除前后空格
+        :param text:
+        :return:
+        '''
+        new_text = [i.strip() for i in text.split('\n') if i.strip()]
+        return new_text
+
     def excape(self, str):
         """
                 转译
