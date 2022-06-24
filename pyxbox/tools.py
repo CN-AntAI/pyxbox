@@ -1249,23 +1249,22 @@ class Text:
         @result:
         """
 
-        contents = text.split("\n")
-        json = {}
-        for content in contents:
-            if content == "\n":
+        if text is None:
+            return None
+
+        headers = text.splitlines()
+        headers_tuples = [header.split(":", 1) for header in headers]
+
+        result_dict = {}
+        for header_item in headers_tuples:
+            if not len(header_item) == 2:
                 continue
 
-            content = content.strip()
-            regex = ["(:?.*?):(.*)", "(.*?):? +(.*)", "([^:]*)"]
+            item_key = header_item[0].strip()
+            item_value = header_item[1].strip()
+            result_dict[item_key] = item_value
 
-            result = self.get_info(content, regex)
-            result = result[0] if isinstance(result[0], tuple) else result
-            try:
-                json[result[0]] = eval(result[1].strip())
-            except:
-                json[result[0]] = result[1].strip()
-
-        return json
+        return result_dict
 
     def cut_string(self, text, length):
         """
