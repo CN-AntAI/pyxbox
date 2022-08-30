@@ -12,6 +12,7 @@ import hashlib
 import html
 import json
 import logging
+import math
 import os
 import random
 import re
@@ -1137,6 +1138,23 @@ class URL:
 
 x_url = URL()
 
+
+# *********************************************** 列表相关模块 --start ***********************************************
+class CustomList:
+    def bucket_cut(self, array: List, length: int) -> List:
+        '''
+        应用场景，把一个列表平均分为多少，也就是分桶策略，把每个桶装多少元素
+        :param array: 需要分桶的原始，列表
+        :param length: 每个桶元素的个数
+        :return:
+        '''
+        return [array[i * length:(i + 1) * length] for i in range(math.ceil(len(array) / length))]
+
+
+x_list = CustomList()
+
+
+# ************************************************ 列表相关模块 --end ************************************************
 
 # ************************************************ URL相关模块 --end ************************************************
 
