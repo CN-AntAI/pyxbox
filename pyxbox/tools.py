@@ -19,6 +19,7 @@ import re
 import shutil
 import socket
 import string
+import sys
 import threading
 import time
 import traceback
@@ -26,10 +27,12 @@ import urllib
 import uuid
 from pprint import pformat
 from typing import List
+from urllib import request
 from urllib.parse import urljoin, urlencode
 
 import demjson
 import requests
+import six
 from requests.cookies import RequestsCookieJar
 from w3lib.url import canonicalize_url as _canonicalize_url
 
@@ -317,6 +320,81 @@ class File:
         if not os.path.exists(file_path):
             os.makedirs(file_path)
         return file_path
+
+    def download_file(self, url, file_path, *, call_func=None, proxies=None, data=None):
+        """
+        下载文件，会自动创建文件存储目录
+        Args:
+            url: 地址
+            file_path: 文件存储地址
+            call_func: 下载成功的回调
+            proxies: 代理
+            data: 请求体
+
+        Returns:
+
+        """
+        directory = os.path.dirname(file_path)
+        self.makedirs_file_path(directory)
+
+        # 进度条
+        def progress_callfunc(blocknum, blocksize, totalsize):
+            """回调函数
+            @blocknum : 已经下载的数据块
+            @blocksize : 数据块的大小
+            @totalsize: 远程文件的大小
+            """
+            percent = 100.0 * blocknum * blocksize / totalsize
+            if percent > 100:
+                percent = 100
+            # print ('进度条 %.2f%%' % percent, end = '\r')
+            sys.stdout.write("进度条 %.2f%%" % percent + "\r")
+            sys.stdout.flush()
+
+        if url:
+            try:
+                if proxies:
+                    # create the object, assign it to a variable
+                    proxy = request.ProxyHandler(proxies)
+                    # construct a new opener using your proxy settings
+                    opener = request.build_opener(proxy)
+                    # install the openen on the module-level
+                    request.install_opener(opener)
+
+                request.urlretrieve(url, file_path, progress_callfunc, data)
+
+                if callable(call_func):
+                    call_func()
+                return 1
+            except Exception as e:
+                logging.error('download files error:' + str(e))
+                return 0
+        else:
+            return 0
+
+    def get_file_list(self, path, ignore=[]):
+        templist = path.split("*")
+        path = templist[0]
+        file_type = templist[1] if len(templist) >= 2 else ""
+
+        # 递归遍历文件
+        def get_file_list_(path, file_type, ignore, all_file=[]):
+            file_list = os.listdir(path)
+
+            for file_name in file_list:
+                if file_name in ignore:
+                    continue
+
+                file_path = os.path.join(path, file_name)
+                if os.path.isdir(file_path):
+                    get_file_list_(file_path, file_type, ignore, all_file)
+                else:
+                    if not file_type or file_name.endswith(file_type):
+                        all_file.append(file_path)
+
+            return all_file
+
+        return get_file_list_(path, file_type, ignore) if os.path.isdir(path) else [path]
 
 
 x_file = File()
@@ -1149,6 +1227,56 @@ class CustomList:
         :return:
         '''
         return [array[i * length:(i + 1) * length] for i in range(math.ceil(len(array) / length))]
+
+    def flatten(self, x):
+        """flatten(sequence) -> list
+        Returns a single, flat list which contains all elements retrieved
+        from the sequence and all recursively contained sub-sequences
+        (iterables).
+        Examples:
+        >>> [1, 2, [3,4], (5,6)]
+        [1, 2, [3, 4], (5, 6)]
+        >>> flatten([[[1,2,3], (42,None)], [4,5], [6], 7, (8,9,10)])
+        [1, 2, 3, 42, None, 4, 5, 6, 7, 8, 9, 10]
+        >>> flatten(["foo", "bar"])
+        ['foo', 'bar']
+        >>> flatten(["foo", ["baz", 42], "bar"])
+        ['foo', 'baz', 42, 'bar']
+        """
+        return list(self.iflatten(x))
+
+    def iflatten(self, x):
+        """iflatten(sequence) -> iterator
+        Similar to ``.flatten()``, but returns iterator instead"""
+        for el in x:
+            if self._is_listlike(el):
+                for el_ in self.flatten(el):
+                    yield el_
+            else:
+                yield el
+
+    def _is_listlike(self, x):
+        """
+        >>> _is_listlike("foo")
+        False
+        >>> _is_listlike(5)
+        False
+        >>> _is_listlike(b"foo")
+        False
+        >>> _is_listlike([b"foo"])
+        True
+        >>> _is_listlike((b"foo",))
+        True
+        >>> _is_listlike({})
+        True
+        >>> _is_listlike(set())
+        True
+        >>> _is_listlike((x for x in range(3)))
+        True
+        >>> _is_listlike(six.moves.xrange(5))
+        True
+        """
+        return hasattr(x, "__iter__") and not isinstance(x, (six.text_type, bytes))
 
 
 x_list = CustomList()
