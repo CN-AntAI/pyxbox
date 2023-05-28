@@ -23,6 +23,17 @@
 - Json处理相关模块
 - HTML处理相关模块
 
+#### media
+##### video
+- 视频的下载
+- mp4转换为mp3
+##### image
+- base64toimage
+- imagetobase64
+- imageOCR
+##### sound
+- sound2str
+
 #### user_agent
 - 请求头：user-agent库
 
