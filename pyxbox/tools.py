@@ -2039,36 +2039,34 @@ x_sql = SQL()
 # ************************************************ b站转码相关模块 --start ************************************************
 class Bilibili:
     def __init__(self):
-        self.table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
-        self.tr = {}
-        for i in range(58):
-            self.tr[self.table[i]] = i
-        self.s = [11, 10, 3, 8, 4, 6]
-        self.xor = 177451812
-        self.add = 8728348608
+        self.XOR_CODE = 23442827791579
+        self.MASK_CODE = 2251799813685247
+        self.MAX_AID = 1 << 51
+        self.ALPHABET = "FcwAPNKTMug3GV5Lj7EJnHpWsx4tb8haYeviqBz6rkCy12mUSDQX9RdoZf"
+        self.ENCODE_MAP = 8, 7, 0, 5, 1, 3, 2, 4, 6
+        self.DECODE_MAP = tuple(reversed(self.ENCODE_MAP))
+        self.BASE = len(self.ALPHABET)
+        self.PREFIX = "BV1"
+        self.PREFIX_LEN = len(self.PREFIX)
+        self.CODE_LEN = len(self.ENCODE_MAP)
 
     def bv_to_av(self, bvd: str) -> int:
-        '''
-        bv转av
-        :param bvd: eg:BV1UY411p7jc
-        :return: av
-        '''
-        r = 0
-        for i in range(6):
-            r += self.tr[bvd[self.s[i]]] * 58 ** i
-        return (r - self.add) ^ self.xor
+        assert bvd[:3] == self.PREFIX
+
+        bvd = bvd[3:]
+        tmp = 0
+        for i in range(self.CODE_LEN):
+            idx = self.ALPHABET.index(bvd[self.DECODE_MAP[i]])
+            tmp = tmp * self.BASE + idx
+        return (tmp & self.MASK_CODE) ^ self.XOR_CODE
 
     def av_to_bv(self, avd: int) -> str:
-        '''
-        av转bv
-        :param avd: eg:252242806
-        :return:
-        '''
-        x = (avd ^ self.xor) + self.add
-        r = list('BV1  4 1 7  ')
-        for i in range(6):
-            r[self.s[i]] = self.table[x // 58 ** i % 58]
-        return ''.join(r)
+        bvid = [""] * 9
+        tmp = (self.MAX_AID | avd) ^ self.XOR_CODE
+        for i in range(self.CODE_LEN):
+            bvid[self.ENCODE_MAP[i]] = self.ALPHABET[tmp % self.BASE]
+            tmp //= self.BASE
+        return self.PREFIX + "".join(bvid)
 
     def decode_view(self, stream: bytes):
         '''
