@@ -1807,6 +1807,56 @@ class JSON:
 
         return keys
 
+    def jdict_by_tpath(self, json_str: str = None, data: dict = dict, tpath: str = 'JSON'):
+        """
+        从字典中根据目标路径获取结果数据，支持JSON-handle工具直接解析
+        :param json_str:日常需要处理的json字符串信息
+        :param data:日常需要处理的字典信息
+        :param tpath:需要获取的目标路径
+        :return:obj返回目标路径的值
+        eg:
+        data = {
+        "l1": {
+            "l1_1": [
+                "l1_1_1",
+                "l1_1_2"
+            ],
+            "l1_2": {
+                "l1_2_1": 121
+            }
+        },
+        "l2": {
+            "l2_1": None,
+            "l2_2": True,
+            "l2_3": {}
+        }
+        }
+        path ='l1.l1_1[1]'
+        path ='JSON.l1.l1_1[1]'
+        """
+        if json_str:
+            data = json.loads(json_str)
+        # 替换字符串中的索引为实际的数字
+        tpath = tpath[5:] if tpath.startswith('JSON') else tpath
+        path = tpath.replace('[', '.').replace(']', '')
+        # 将路径字符串拆分为键和索引的列表
+        keys = path.split('.')
+        value = data
+        # 遍历路径中的每个键
+        for key in keys:
+            # 如果键是一个数字，将其转换为整数
+            if key.isdigit():
+                key = int(key)
+            # 尝试访问当前字典的键
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            elif isinstance(value, list) and 0 <= key < len(value):
+                value = value[int(key)]
+            else:
+                # 如果键不存在，则返回None
+                return None
+        return value
+
     def to_chinese(self, unicode_str):
         format_str = json.loads('{"chinese":"%s"}' % unicode_str)
         return format_str["chinese"]
