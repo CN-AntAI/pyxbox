@@ -20,9 +20,9 @@
 - **SOUND**：音频处理工具。
 
 ## 安装教程
-- **安装**：`pip install pyxdbx`
-- **更新**：`pip install -U pyxdbx`
-- **卸载**：`pip uninstall pyxdbx`
+- **安装**：`pip install pyxbox`
+- **更新**：`pip install -U pyxbox`
+- **卸载**：`pip uninstall pyxbox`
 
-[GitHub仓库](https://github.com/CN-AntAI/pyxdbx)
-[开始使用](#pyxdbx)
+[GitHub仓库](https://github.com/CN-AntAI/pyxbox)
+[开始使用](#pyxbox)
