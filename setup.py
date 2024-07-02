@@ -18,11 +18,11 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name="pyxbox",
-    version="0.1.6",
+    version="0.1.7",
     packages=find_packages(),
     long_description=README,  # 详细描述（一般会写在README.md中）
     long_description_content_type="text/markdown",  # README.md中描述的语法（一般为markdown）
-    url="https://gitee.com/spider-x/pyxbox",
+    url="https://gitee.com/CN-AntAI/pyxbox",
     author="BruceLong",
     license="MIT Licence",
     author_email="18656170559@163.com",
